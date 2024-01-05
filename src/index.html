@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>雷达视频播放Demo</title>
+  </head>
+  <style>
+    #canvas-radar-image{
+        width: 512px;
+        border: 1px solid #ccc;
+        height: 512px;
+    }
+  </style>
+  <body>
+
+    <div className="App">
+        <div class="radar-viwer">
+          <canvas id="canvas-radar-image" ></canvas>
+        </div>
+    
+        <div>
+          <label for="radarid">雷达ID：</label>
+          <input type="text" id="radarid" name="radarid" value="CDJH06" />
+        </div>
+
+        <div>
+            <label for="userName">用户名：</label>
+            <input type="text" id="userName" name="userName" value="186xxxxxxxx" />
+            <label for="passwd">密码：</label>
+            <input type="text" id="passwd" name="passwd" value="xxxxxxxx"/> 
+            <button id="rtLogin">用户登录验证</button>
+        </p>
+            <button id="rtPlay">开始播放</button>
+            <button id="rtStop">停止播放</button>
+            <button id="rtGetRange">获取量程</button>
+
+            <select id="trailsTimeSelect">
+              <option value=60 selected>(默认值)余晖时间60秒</option>   
+              <option value=-1>一直显示余晖</option>
+              <option value=0>不显示余晖</option>                   
+            </select>
+
+            <button id="rtClearTrails">清理余晖</button>
+            <button id="rtTSetTrailsColor">设置余晖颜色</button>
+
+            <select id="channelSelect">
+              <option value=0 selected>通道0</option>
+              <option value=1>通道1</option>         
+            </select>
+
+            <select id="displayModeSelect">
+              <option value=0 selected>颜色模式1</option>
+              <option value=1>颜色模式2</option>         
+            </select>
+
+            <div>
+              <input type="range" id="transparencyRange" min="0" max="1" value="1" step="0.1" />
+              <label for="volume">回波透明度</label>
+            </div>
+
+            <div>
+            </br></br>
+              操作说明:</br>
+              1.填写雷达ID，用户名，密码</br>
+              2.点击"用户登录验证"按钮进行登录，获取JWT Token</br>
+              3.点击"开始播放"按钮进行视频播放
+
+            </div>
+           
+        </div>
+    </div>
+
+
+
+    <script type="module">
+        import createModule  from './LibradarWebSDK.js'
+
+        let WebRadarSDK = {}
+
+        
+/**
+加载并解析WebAssembly模块中的导出函数
+*/       
+async function loadModule(){
+	const Module = await createModule(); 
+	//连接到实时雷达视频流服务器并播放
+	function RRS_ConnectAndPlay(config , conn_status_cb=null  ,tracks_cb = null){
+		function status_cb_wrap(handle,device_id,status_code){
+			if(conn_status_cb)
+				conn_status_cb(handle ,Module.UTF8ToString(device_id),status_code)
+		}
+
+		function tracks_cb_wrap(handle,device_id , obj){
+			if(tracks_cb)
+				tracks_cb(handle ,Module.UTF8ToString(device_id) ,Module.Emval.toValue(obj));
+		}
+
+		return  Module.RRS_ConnectAndPlay(config ,
+			conn_status_cb?Module.addFunction(status_cb_wrap , 'viii'):0,
+			tracks_cb?Module.addFunction(tracks_cb_wrap , 'viii'):0 );
+	}
+
+//连接历史雷达视频服务器并播放
+	function RDP_Connect(config ,conn_status_cb=null,tracks_cb = null,rdp_status_cb=null){
+		function status_cb_wrap(handle,device_id,status_code){
+			if(conn_status_cb)
+				conn_status_cb(handle ,Module.UTF8ToString(device_id),status_code)
+		}
+
+		function tracks_cb_wrap(handle,device_id , obj){
+			if(tracks_cb)
+				tracks_cb(handle ,Module.UTF8ToString(device_id) ,Module.Emval.toValue(obj));
+		}
+
+		function rdp_status_cb_wrap(handle,device_id , obj){
+			if(rdp_status_cb)
+				rdp_status_cb(handle ,Module.UTF8ToString(device_id) ,Module.Emval.toValue(obj));
+		}
+
+		return  Module.RDP_Connect(config ,
+		Module.addFunction(status_cb_wrap , 'viii'),
+		Module.addFunction(tracks_cb_wrap , 'viii'),
+		Module.addFunction(rdp_status_cb_wrap , 'viii'));
+	}
+
+
+  //连接航迹服务器并播放
+	function RTPB_Connect(config ,conn_status_cb=null,tracks_cb = null,rdp_status_cb=null){
+		function status_cb_wrap(handle,device_id,status_code){
+			if(conn_status_cb)
+				conn_status_cb(handle ,Module.UTF8ToString(device_id),status_code)
+		}
+
+		function tracks_cb_wrap(handle,device_id , obj){
+			if(tracks_cb)
+				tracks_cb(handle ,Module.UTF8ToString(device_id) ,Module.Emval.toValue(obj));
+		}
+
+		function rdp_status_cb_wrap(handle,device_id , obj){
+			if(rdp_status_cb)
+				rdp_status_cb(handle ,Module.UTF8ToString(device_id) ,Module.Emval.toValue(obj));
+		}
+
+		return  Module.RTPB_Connect(config ,
+		Module.addFunction(status_cb_wrap , 'viii'),
+		Module.addFunction(tracks_cb_wrap , 'viii'),
+		Module.addFunction(rdp_status_cb_wrap , 'viii'));
+	}
+
+  //实时视频
+	WebRadarSDK.RRS_ConnectAndPlay = RRS_ConnectAndPlay ; 
+	WebRadarSDK.RRS_Disconnect = Module.RRS_Disconnect ; 	
+	WebRadarSDK.RSS_ChangeStreamChannel = Module.RSS_ChangeStreamChannel ;
+
+  //历史视频
+	WebRadarSDK.RDP_Connect =RDP_Connect;
+	WebRadarSDK.RDP_Disconnect= Module.RDP_Disconnect ;
+	WebRadarSDK.RDP_CMD_Play = Module.RDP_CMD_Play;
+	WebRadarSDK.RDP_CMD_Pause = Module.RDP_CMD_Pause;
+	WebRadarSDK.RDP_CMD_Continue = Module.RDP_CMD_Continue;
+	WebRadarSDK.RDP_CMD_ChangeSpeed = Module.RDP_CMD_ChangeSpeed;
+	WebRadarSDK.RDP_CMD_DataConfig = Module.RDP_CMD_DataConfig;
+	WebRadarSDK.RDP_CMD_Stop =Module.RDP_CMD_DataConfig;
+	WebRadarSDK.CoordinatesArray = Module.CoordinatesArray;
+
+  //航迹数据
+	WebRadarSDK.RTPB_Connect = RTPB_Connect;
+	WebRadarSDK.RTPB_Disconnect =Module.RTPB_Disconnect;
+	WebRadarSDK.RTPB_CMD_Play_Polygon =Module.RTPB_CMD_Play_Polygon;
+	WebRadarSDK.RTPB_CMD_Play_Circle =Module.RTPB_CMD_Play_Circle;
+	WebRadarSDK.RTPB_CMD_Pause =Module.RTPB_CMD_Pause;
+	WebRadarSDK.RTPB_CMD_Continue =Module.RTPB_CMD_Continue;
+	WebRadarSDK.RTPB_CMD_ChangeSpeed =Module.RTPB_CMD_ChangeSpeed;
+	WebRadarSDK.RTPB_CMD_ChangePlayTime =Module.RTPB_CMD_ChangePlayTime;
+	WebRadarSDK.RTPB_CMD_Stop =Module.RTPB_CMD_Stop;
+	WebRadarSDK.RTPB_CMD_ChangePlayGeo_Polygon =Module.RTPB_CMD_ChangePlayGeo_Polygon;
+
+	WebRadarSDK.getRadarRange=Module.getRadarRange //获取雷达量程
+
+	WebRadarSDK.setTransparency=Module.setTransparency //雷达回波显示透明度
+	WebRadarSDK.getTransparency=Module.getTransparency
+
+	WebRadarSDK.setTrailsTime=Module.setTrailsTime  //余晖显示时间设置
+	WebRadarSDK.getTrailsTime=Module.getTrailsTime
+	WebRadarSDK.clearTrails=Module.clearTrails  //清除余晖
+
+	WebRadarSDK.setTrailsColor=Module.setTrailsColor  //余晖颜色
+	WebRadarSDK.getTrailsColor=Module.getTrailsColor
+
+	WebRadarSDK.setDisplayMode=Module.setDisplayMode  //雷达回波显示颜色表
+	WebRadarSDK.getDisplayMode=Module.getDisplayMode
+}
+
+loadModule(); 
+
+//需要播放视频的雷达ID，根据需要进行修改
+var gRadarID = ""; 
+
+//JWT Token，用户登录后获取，随后其他的API调用需要使用此Token作为凭证
+var gJwtToken= "" ; 
+
+//指定ID的雷达的视频播放websocket地址
+var gWSAddress = "";
+
+//视频回放全局句柄，后续对视频的操作需要使用此句柄
+var rt_stream_handle  = null; 
+
+//当前播放的视频通道
+var gCurrentChannel =0;
+
+//当前的雷达回波颜色显示模式(目前实现了两种颜色模式:0-彩色模式,1-绿色灰度模式)
+var gCurrentDisplayMode = 0 
+
+
+ /**
+使用用户名与密码登录，获取JWT Token用于后续的操作
+* @param {*} user_data 用户登录信息,JSON对象
+{
+  "user_name": 用户名,
+  "password": 登录密码,
+  "platform": 1
+}
+*/
+async function UserLogin(user_data) {
+    const url = 'http://api.sanhang.info:13002/libradarapi.Api/UserLogin' ;
+    const response = await fetch(url,{
+    method:"POST",
+    body: JSON.stringify(user_data) ,
+    headers:{"Content-type":"application/json"}} );
+  if (!response.ok) {
+    const message = `UserLogin API An error has occured: ${response.status}`;
+    throw new Error(message);
+  }
+  const loginState = await response.json();
+  return loginState;
+}
+
+
+ /**
+查询指定ID的雷达设备的视频流播放地址参数
+* @param {*} radar_id 雷达ID,JSON对象
+{
+  "radar_id": 雷达ID
+}
+*/
+async function QueryRTStreamEndPoints(radar_id){
+    const url = 'http://api.sanhang.info:13002/libradarapi.SDK/QueryRTStreamEndPoints' ;
+
+    //此接口需要JWT验证，构造验证内容
+    var AuthorizationValue = "Bearer "+ gJwtToken ; 
+
+    const response = await fetch(url,{
+    method:"POST",
+    body: JSON.stringify(radar_id) ,
+    headers:{"Content-type":"application/json" ,"Authorization":AuthorizationValue}} );
+  if (!response.ok) {
+    const message = `QueryRTStreamEndPoints API An error has occured: ${response.status}`;
+    throw new Error(message);
+  }
+  const endpoints = await response.json();
+  return endpoints;
+}
+
+
+ /**
+   * 雷达视频服务器连接状态回调函数
+   * @param {*} handle      句柄
+   * @pragm {*} deviceID    设备名称ID
+   * @param {*} statusCode  连接状态代码(定义如下)
+   
+//连接服务器成功
+#define WS_CONNECT_STATUS_OK					0
+
+//鉴权成功
+#define WS_CONNECT_STATUS_AUTH_OK				 1
+
+//参数错误	
+#define  WS_CONNECT_STATUS_INVALID_ARGUMENT		-1	
+
+//用户未登录
+#define	 WS_CONNECT_STATUS_NOT_SIGNIN			-2	
+
+//JWT Token错误或者超期
+#define	 WS_CONNECT_STATUS_TOKEN_INVALID		 -3	
+
+//客户端鉴权回复错误
+#define	 WS_CONNECT_STATUS_AUTH_RESP_ERROR		-4	
+
+ //请求的设备不可访问	
+#define	 WS_CONNECT_STATUS_DEVICE_ACCESS_DENIED	-5 
+
+//请求的设备离线
+#define	 WS_CONNECT_STATUS_DEV_OFFLINE			-6		
+
+//其他未知错误
+#define	 WS_CONNECT_STATUS_UNKNOWN_ERROR		-7	
+
+//无法连接服务器
+#define WS_CONNECT_STATUS_CONNECT_FAILED		-8
+
+//服务器主动断开连接
+#define WS_CONNECT_STATUS_SERVER_DISCONNECT		-9
+
+*/
+function RTConnectStatusFn(handle, deviceID, statusCode) {
+    //statusCode>=0代表成功 ,<0表示失败，具体原因参照状态码说明
+    console.log(`RTConnectStatusFn:deviceID=${deviceID},status=${statusCode}`);
+    rt_stream_handle = handle; //保存全局视频播放句柄
+}
+
+
+  /**
+   * 目标航迹跟踪回调(目前用于站位，并没有实际用途,查询航迹请使用航迹查询API)
+   * @param {*} handle      句柄
+   * @param {*} deviceID    设备ID
+   * @param {*} obj         航迹更新对象
+   */
+function RTTracksUpdateFn(handle, deviceID, obj) {
+    console.log("DeviceID=", deviceID, " OBJ=", obj);
+}
+
+
+//"用户登录验证"按钮点击回调
+function onClickRtLogin(){
+    const userName =   document.getElementById("userName").value ; //用户名
+    const passwd =  document.getElementById("passwd").value ; //密码
+    if(userName.length ==0 || passwd.length==0){
+        alert("用户名或密码为空!");
+        return;
+    }
+
+    //构造请求的JSON对象(备注:platform固定为1)
+    const user = {"user_name": userName, "password": passwd,"platform": 1} ; 
+    
+    UserLogin(user)
+    .then(loginStatus => {
+        //登录成功，保存JWT Token
+        gJwtToken=loginStatus.jwtToken;
+        console.log(`登录成功,JWT=${gJwtToken}`);
+    })
+    .catch(error => {
+         alert(`登录失败:${error.message}`) ;
+        }) ; 
+}
+
+
+//"开始播放"按钮点击回调函数
+function onClickRTPlay() {
+    console.log("onClickRTPlay") ;
+
+    //播放视频之前需要先进行登录操作
+    if(gJwtToken.length==0){
+        alert("请先登录!");
+        return;
+    }
+
+    gRadarID= document.getElementById("radarid").value ; //雷达ID
+    if(gRadarID.length ==0){
+      alert("雷达ID不能为空");
+      return;
+    }
+
+    /* 首先获取播放雷达的视频服务器的地址数据*/
+     const radar_id = {"radar_id": gRadarID} ;   //构造请求的JSON对象
+     QueryRTStreamEndPoints(radar_id)
+    .then(ep => {
+        gWSAddress = `ws://${ep.endpoints[0].address}:${ep.endpoints[0].wsPort}`;
+        console.log(`获取视频播放地址成功:${gWSAddress}`);
+
+   //开始播放雷达视频
+   var rt_config = {
+      "wsAddress": gWSAddress,  //视频播放地址
+      "initChannel": 0,         //初始播放通道(部分雷达有两个视频通道可选择0或者1,如果只有一个通道的雷达设置为0)
+      "jwtToken": gJwtToken,    //JWT Token
+      "userName": document.getElementById("userName").value,    //用户名
+      "requestDeviceID": gRadarID,  //请求视频的雷达ID
+      "renderCanvasID": "#canvas-radar-image", //视频渲染的canvas的选择子
+      "platformCode":1  //平台选择(目前固定为1)
+    };
+
+    //调用视频播放接口请求雷达回波视频
+     WebRadarSDK.RRS_ConnectAndPlay(rt_config, RTConnectStatusFn, RTTracksUpdateFn);
+    })
+    .catch(error => {
+         alert(`获取雷达视频地址失败:${error.message}`) ;
+        }) ; 
+}
+
+//"停止播放"按钮点击回调函数
+function onClickRTStop(){
+    WebRadarSDK.RRS_Disconnect(rt_stream_handle);
+}
+
+//"获取量程"按钮点击回调函数
+function onClickRTGetRange(){
+    var radar_range = WebRadarSDK.getRadarRange(rt_stream_handle);
+    console.log("雷达量程为:", radar_range);
+}
+
+
+//"清除余晖"按钮点击回调函数
+function onClickRTClearTrails(){
+    WebRadarSDK.clearTrails(rt_stream_handle);
+}
+
+
+//"设置余晖颜色"按钮点击回调函数
+function onClickRTSetTrailsColor(){
+    //颜色采用数组表示[R,G,B,A] ,每个分量的取值范围[0,255]
+    WebRadarSDK.setTrailsColor(rt_stream_handle, [0, 255, 0, 255]);
+}
+
+
+//视频播放通道更改回调函数
+function onChanneChanged(){
+	let index = this.options.selectedIndex;
+	let value = this.options[index].value;
+  console.log(`index=${index} value=${value}`);
+  gCurrentChannel = value ; 
+  WebRadarSDK.RSS_ChangeStreamChannel(rt_stream_handle, gCurrentChannel);
+}
+
+
+//显示颜色模式更改回调函数
+function onDisplayModeChanged(){
+  let index = this.options.selectedIndex;
+	let value = this.options[index].value;
+  console.log(`index=${index} value=${value}`);
+  gCurrentDisplayMode = value ; 
+  WebRadarSDK.setDisplayMode(rt_stream_handle, gCurrentDisplayMode);
+}
+
+//余晖显示时间更改回调函数
+function onTrailsTimeChanged(){
+  let index = this.options.selectedIndex;
+	let value = this.options[index].value;
+  console.log(`index=${index} value=${value}`);
+  WebRadarSDK.setTrailsTime(rt_stream_handle, value);
+}
+
+
+//雷达回波颜色透明度更改回调函数
+function onTransparencyChanged(){
+  //第二个参数标识透明度,取值范围[0,1],0表示完全透明，1表示完全不透明
+  WebRadarSDK.setTransparency(rt_stream_handle, this.value);
+}
+
+ document.querySelector('#rtLogin').onclick = onClickRtLogin;
+ document.querySelector('#rtPlay').onclick = onClickRTPlay;
+ document.querySelector('#rtStop').onclick = onClickRTStop;
+ document.querySelector('#rtGetRange').onclick = onClickRTGetRange;
+ document.querySelector('#rtClearTrails').onclick = onClickRTClearTrails;
+ document.querySelector('#rtTSetTrailsColor').onclick = onClickRTSetTrailsColor;
+ document.querySelector('#channelSelect').onchange = onChanneChanged;
+ document.querySelector('#displayModeSelect').onchange = onDisplayModeChanged;
+ document.querySelector('#trailsTimeSelect').onchange = onTrailsTimeChanged;
+ document.querySelector('#transparencyRange').onchange = onTransparencyChanged;
+ 
+</script>
+
+  </body>
+</html>
