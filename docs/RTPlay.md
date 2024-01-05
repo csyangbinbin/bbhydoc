@@ -15,7 +15,7 @@
 
 
 ##### 参考代码:
-> https://gitee.com/csyangbinbin/bbhydoc/tree/master/src
+> https://github.com/csyangbinbin/bbhydoc/tree/master/src
 ------
 
 ### 接口说明

@@ -18,5 +18,5 @@
 ##  相关网站
 
 * [贝贝护渔网站](http://app.sanhang.info)
-* [开发文档](https://gitee.com/csyangbinbin/bbhydoc)
+* [开发文档](https://github.com/csyangbinbin/bbhydoc)
 
